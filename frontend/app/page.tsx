@@ -29,7 +29,8 @@ function formatCountdown(seconds: number): string {
 
 function shortAddr(hex: string): string {
   if (!hex) return "—";
-  return `0x${hex.slice(0, 4)}…${hex.slice(-4)}`;
+  const clean = hex.startsWith("0x") ? hex.slice(2) : hex;
+  return `0x${clean.slice(0, 4)}…${clean.slice(-4)}`;
 }
 
 export default function HomePage() {
@@ -250,7 +251,7 @@ export default function HomePage() {
                   className="grid grid-cols-[70px_1fr_auto] items-center gap-3 py-2.5 border-t border-border text-[0.76rem] last:border-b"
                 >
                   <span className={isWinner ? "text-select" : "text-muted-foreground"}>FD-{String(i + 1).padStart(2, "0")}</span>
-                  <span className={`font-mono ${isWinner ? "text-select font-semibold" : "text-foreground"}`}>{shortAddr(addr.replace(/^0x/, ""))}</span>
+                  <span className={`font-mono ${isWinner ? "text-select font-semibold" : "text-foreground"}`}>{shortAddr(addr)}</span>
                   <span className={`text-[0.66rem] text-right ${isWinner ? "text-select" : "text-muted-foreground"}`}>{isWinner ? "★ WINNER" : ""}</span>
                 </div>
               );

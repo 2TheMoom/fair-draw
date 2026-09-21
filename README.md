@@ -1,20 +1,71 @@
-# Sample GenLayer project
+# Fair Draw
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/license/mit/)
 [![Discord](https://img.shields.io/badge/Discord-Join%20us-5865F2?logo=discord&logoColor=white)](https://discord.gg/8Jm4v89VAu)
 [![Telegram](https://img.shields.io/badge/Telegram--T.svg?style=social&logo=telegram)](https://t.me/genlayer)
 [![Twitter](https://img.shields.io/twitter/url/https/twitter.com/yeagerai.svg?style=social&label=Follow%20%40GenLayer)](https://x.com/GenLayer)
-[![GitHub star chart](https://img.shields.io/github/stars/yeagerai/genlayer-project-boilerplate?style=social)](https://star-history.com/#yeagerai/genlayer-js)
 
 ## About
-This project includes the boilerplate code for a GenLayer use case implementation, specifically a football bets game.
+Fair Draw is a GenLayer Intelligent Contract that runs a verifiable
+commit-then-reveal raffle - with no LLM anywhere in the contract, and no
+external randomness trust assumption beyond a public beacon anyone can
+check themselves.
+
+`open_round(round_id)` starts a fixed 5-minute entry window. `enter(round_id)`
+adds the caller once per round while it's open. `draw(round_id)` - callable
+once the window has closed and at least 2 wallets entered - derives the
+winner from a specific [drand](https://drand.love) public randomness beacon
+round, computed purely from `entry_deadline`:
+
+```
+target_round = (entry_deadline - DRAND_GENESIS_TIME) // DRAND_PERIOD_SECONDS + 1
+```
+
+That number is fixed the instant the round opens, before its randomness
+value exists - so nobody can decide whether to enter after seeing the
+outcome. Validators independently fetch that exact round from drand's
+public API and must agree on it byte-for-byte before reaching consensus -
+unlike a live-drifting price feed, a finalized drand round is immutable,
+so the raw randomness is itself consensus-critical here, not just the
+derived winner. `winner_index = int(randomness, 16) % entrant_count`. The
+full entrant list is public (`get_entrants`), so anyone can recompute the
+winner themselves from the public beacon value alone.
+
+Like [Handle](https://github.com/2TheMoom/handle) and
+[Corroborate](https://github.com/2TheMoom/corroborate), this project
+deliberately skips `gl.nondet.exec_prompt` - proving GenVM's deterministic-
+consensus pattern extends from confirming a live fact to deriving a fair,
+unpredictable-but-verifiable outcome. No native value ever moves through
+this contract.
+
+## Live deployment
+Deployed on **GenLayer Bradbury Testnet** (chain ID 4221):
+- **Contract:** [`0xc1855418c4F8149861CA5E1052a5192b7c0D339c`](https://explorer-bradbury.genlayer.com/address/0xc1855418c4F8149861CA5E1052a5192b7c0D339c)
+- **Frontend:** https://fair-draw-frontend.vercel.app
+- Verified via 17 passing direct-mode tests (`python -m pytest tests/direct/`),
+  covering the full round lifecycle, entry-window enforcement, the
+  2-entrant minimum, duplicate-entry and double-draw guards, and a
+  clean revert (with a re-drawable round afterward) when the committed
+  drand round isn't yet available.
+- Verified live end-to-end against the real drand public API (not just
+  direct-mode tests): opened a round with two independent wallets,
+  waited for the real 5-minute window to close, and called `draw()` -
+  validators reached full 5/5 consensus and the contract recorded
+  drand round `6486225`. Independently re-fetching that exact round
+  from `api.drand.sh/public/6486225` returns the byte-identical
+  randomness the contract stored, and recomputing
+  `int(randomness, 16) % 2` by hand gives `0`, matching the contract's
+  own `winner_index: 0` exactly - the draw is reproducible from the
+  public beacon alone, without trusting this contract's word for it.
 
 ## What's included
-- An example intelligent contract (Football Bets) with web access and LLM integration
-- **Direct mode tests** — fast, in-memory unit tests with web/LLM mocking (~ms per test)
-- **Integration tests** — full end-to-end tests against GenLayer Studio
+- `contracts/fair_draw.py` — the FairDraw Intelligent Contract
+- `tests/direct/test_fair_draw.py` — direct-mode tests (in-memory, mocked drand API, time-warped)
 - **Contract linting** — static analysis to catch common contract issues before deployment
 - **CI pipeline** — GitHub Actions workflow for linting and direct tests
-- A production-ready Next.js 15 frontend with TypeScript, TanStack Query, and Radix UI
+- A Next.js 16 frontend (TypeScript, TanStack Query, Radix UI) — an
+  observatory/telemetry HUD: a real pulse-timing waveform for the
+  round's committed target, an entrant catalog, and a "verify
+  independently" panel linking straight to drand's public API
 - Configuration file template and deployment scripts
 
 ## Requirements
@@ -26,19 +77,15 @@ This project includes the boilerplate code for a GenLayer use case implementatio
 
 ```
 contracts/              # Python intelligent contracts
+  fair_draw.py            # Fair Draw
 tests/
-  direct/               # Fast in-memory tests (no Studio required)
-    test_create_bet.py   # Bet creation logic
-    test_resolve_bet.py  # Bet resolution with web/LLM mocks
-    test_views.py        # Read-only view methods
-  integration/           # Full tests against GenLayer Studio
-    test_football_bets.py
-    fixtures.py          # Expected state fixtures
-frontend/               # Next.js 15 app (TypeScript, TanStack Query, Radix UI)
-deploy/                 # TypeScript deployment scripts
-gltest.config.yaml      # Test runner network configuration
-pyproject.toml          # Python/pytest configuration
-.github/workflows/      # CI pipeline
+  direct/                # Fast in-memory tests (no Studio required)
+    test_fair_draw.py
+frontend/                # Next.js 16 app (TypeScript, TanStack Query, Radix UI)
+deploy/                  # TypeScript deployment scripts
+gltest.config.yaml       # Test runner network configuration
+pyproject.toml           # Python/pytest configuration
+.github/workflows/       # CI pipeline
 ```
 
 ## Quick Start
@@ -51,53 +98,29 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 2. Lint your contracts
-
-Run the GenVM linter to catch issues before deployment:
+### 2. Lint the contract
 
 ```shell
-genvm-lint check contracts/football_bets.py
+genvm-lint check contracts/fair_draw.py
 ```
-
-The linter catches:
-- Forbidden imports and non-deterministic calls
-- Invalid storage types (must use `TreeMap`, `DynArray`, `u256`, etc.)
-- Missing decorators and return type annotations
-- Non-deterministic operations outside equivalence principle blocks
-- And [20+ other rules](https://github.com/genlayerlabs/genvm-linter)
 
 ### 3. Run direct mode tests
 
-Direct mode tests run contracts in-memory without needing GenLayer Studio. They use mocks for web requests and LLM calls, giving you fast feedback (~milliseconds per test):
-
 ```shell
-pytest tests/direct/ -v
+python -m pytest tests/direct/ -v
 ```
 
-Direct mode features used in these tests:
-- `direct_deploy("contracts/file.py")` — deploy contract in memory
-- `direct_vm.sender = address` — set transaction sender
-- `direct_vm.mock_web(pattern, response)` — mock HTTP/render calls
-- `direct_vm.mock_llm(pattern, response)` — mock LLM responses
-- `direct_vm.expect_revert("message")` — assert expected failures
-- `direct_vm.clear_mocks()` — reset mocks between calls
+Use `python -m pytest`, not bare `pytest` - depending on your installed
+pytest version, running the bare command can fail to put the project
+root on `sys.path`, breaking test discovery with
+`ModuleNotFoundError: No module named 'tests'`.
 
 ### 4. Deploy the contract
 
 1. Choose your network: `genlayer network`
 2. Deploy: `genlayer deploy` (runs the script in `/deploy/deployScript.ts`)
 
-### 5. Run integration tests
-
-Integration tests deploy the contract to GenLayer Studio and test with real consensus:
-
-```shell
-gltest tests/integration/ -v -s
-```
-
-These require GenLayer Studio running (local or hosted).
-
-### 6. Set up the frontend
+### 5. Set up the frontend
 
 1. Copy `frontend/.env.example` to `frontend/.env`
 2. Add your deployed contract address as `NEXT_PUBLIC_CONTRACT_ADDRESS`
@@ -111,26 +134,24 @@ npm run dev
 
 The app will be available at http://localhost:3000/.
 
-## How the Football Bets Contract Works
+## How Fair Draw Works
 
-1. **Creating Bets**: Users bet on a football match by providing the game date, teams, and predicted winner.
-2. **Resolving Bets**: After the match, the contract fetches results from BBC Sport, uses an LLM to extract the score, and validates via the equivalence principle.
-3. **Points**: Correct predictions earn points. Users can query their points or the leaderboard.
+1. **`open_round(round_id)`** — starts a fixed 5-minute entry window for
+   a caller-chosen round ID.
+2. **`enter(round_id)`** — one entry per wallet, only while the window's
+   open.
+3. **`draw(round_id)`** — callable once the window's closed and at least
+   2 wallets entered. Fetches the pre-committed drand round and derives
+   `winner_index = int(randomness, 16) % entrant_count`.
+4. **`get_round` / `get_entrants` / `has_entered`** — read back a round's
+   state, its full entrant list, and whether a wallet has entered.
 
 ## Testing Strategy
 
 | Test Type | Command | Speed | Requires Studio |
 |-----------|---------|-------|-----------------|
-| **Lint** | `genvm-lint check contracts/*.py` | ~250ms | No |
-| **Direct** | `pytest tests/direct/ -v` | ~ms/test | No |
-| **Integration** | `gltest tests/integration/ -v -s` | ~min/test | Yes |
-
-**Recommended workflow:**
-1. Lint after every contract change
-2. Run direct tests frequently during development
-3. Run integration tests before deployment to verify consensus behavior
-
-For AI coding agents (Claude Code, Cursor, etc.), the linter and direct tests provide the fast feedback loop needed for iterative development without requiring a running Studio instance.
+| **Lint** | `genvm-lint check contracts/fair_draw.py` | ~250ms | No |
+| **Direct** | `python -m pytest tests/direct/ -v` | ~ms/test | No |
 
 ## Community
 - **[Discord](https://discord.gg/8Jm4v89VAu)**: Discussions, support, and announcements
