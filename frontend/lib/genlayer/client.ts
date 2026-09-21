@@ -1,23 +1,30 @@
 "use client";
 
 import { createClient } from "genlayer-js";
-import { studionet } from "genlayer-js/chains";
 import { createWalletClient, custom, type WalletClient } from "viem";
+import { getGenLayerChain } from "./chains";
 
 // GenLayer Network Configuration (from environment variables with fallbacks)
-export const GENLAYER_CHAIN_ID = parseInt(process.env.NEXT_PUBLIC_GENLAYER_CHAIN_ID || "61999");
+// Defaults target Bradbury testnet, where Fair Draw is deployed.
+//
+// Chain ID is derived from getGenLayerChain() (not parsed independently from
+// the raw env var) so the wallet-network-switching logic below and the
+// actual read/write client (built from getGenLayerChain() in FairDraw.ts)
+// can never disagree about which chain is active - an unrecognized
+// NEXT_PUBLIC_GENLAYER_CHAIN_ID falls back to Bradbury in both places.
+export const GENLAYER_CHAIN_ID = getGenLayerChain().id;
 export const GENLAYER_CHAIN_ID_HEX = `0x${GENLAYER_CHAIN_ID.toString(16).toUpperCase()}`;
 
 export const GENLAYER_NETWORK = {
   chainId: GENLAYER_CHAIN_ID_HEX,
-  chainName: process.env.NEXT_PUBLIC_GENLAYER_CHAIN_NAME || "GenLayer Studio",
+  chainName: process.env.NEXT_PUBLIC_GENLAYER_CHAIN_NAME || "GenLayer Bradbury Testnet",
   nativeCurrency: {
     name: process.env.NEXT_PUBLIC_GENLAYER_SYMBOL || "GEN",
     symbol: process.env.NEXT_PUBLIC_GENLAYER_SYMBOL || "GEN",
     decimals: 18,
   },
-  rpcUrls: [process.env.NEXT_PUBLIC_GENLAYER_RPC_URL || "https://studio.genlayer.com/api"],
-  blockExplorerUrls: [],
+  rpcUrls: [process.env.NEXT_PUBLIC_GENLAYER_RPC_URL || "https://rpc-bradbury.genlayer.com"],
+  blockExplorerUrls: ["https://explorer-bradbury.genlayer.com/"],
 };
 
 // Ethereum provider type from window
@@ -35,11 +42,14 @@ declare global {
 }
 
 /**
- * Get the GenLayer RPC URL from environment variables
+ * Get the GenLayer RPC URL from environment variables. Defaults to
+ * Bradbury's own RPC - Corroborate is only ever deployed there, so this
+ * must stay consistent with getGenLayerChain()'s Bradbury fallback rather
+ * than pointing at a different network's endpoint by default.
  */
 export function getStudioUrl(): string {
   return (
-    process.env.NEXT_PUBLIC_GENLAYER_RPC_URL || "https://studio.genlayer.com/api"
+    process.env.NEXT_PUBLIC_GENLAYER_RPC_URL || "https://rpc-bradbury.genlayer.com"
   );
 }
 
@@ -281,7 +291,7 @@ export function createMetaMaskWalletClient(): WalletClient | null {
 
   try {
     return createWalletClient({
-      chain: studionet as any,
+      chain: getGenLayerChain() as any,
       transport: custom(provider),
     });
   } catch (error) {
@@ -299,7 +309,7 @@ export function createMetaMaskWalletClient(): WalletClient | null {
  */
 export function createGenLayerClient(address?: string) {
   const config: any = {
-    chain: studionet,
+    chain: getGenLayerChain(),
   };
 
   if (address) {
@@ -312,7 +322,7 @@ export function createGenLayerClient(address?: string) {
     console.error("Error creating GenLayer client:", error);
     // Return client without account on error
     return createClient({
-      chain: studionet,
+      chain: getGenLayerChain(),
     });
   }
 }

@@ -1,7 +1,7 @@
 {
-  "name": "genlayer-football-betting",
+  "name": "fair-draw-frontend",
   "version": "1.0.0",
-  "description": "GenLayer Football Betting - AI-powered prediction betting on GenLayer blockchain.",
+  "description": "Fair Draw - a verifiable commit-then-reveal raffle on GenLayer, no LLM.",
   "main": "index.js",
   "scripts": {
     "dev": "next dev",

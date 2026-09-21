@@ -1,23 +1,16 @@
 /**
- * TypeScript types for GenLayer Football Betting contract
+ * TypeScript types for the GenLayer FairDraw contract
  */
 
-export interface Bet {
-  id: string;
-  game_date: string;
-  team1: string;
-  team2: string;
-  predicted_winner: string;
-  has_resolved: boolean;
-  real_winner?: string;
-  real_score?: string;
-  resolution_url?: string;
-  owner: string;
-}
-
-export interface LeaderboardEntry {
-  address: string;
-  points: number;
+export interface Round {
+  created_at: string;
+  entry_deadline: string;
+  drawn: boolean;
+  winner: string;
+  winner_index: string;
+  drand_round: string;
+  randomness: string;
+  entrant_count: string;
 }
 
 export interface TransactionReceipt {
@@ -25,9 +18,4 @@ export interface TransactionReceipt {
   hash: string;
   blockNumber?: number;
   [key: string]: any;
-}
-
-export interface BetFilters {
-  resolved?: boolean;
-  owner?: string;
 }

@@ -1,38 +1,30 @@
-# GenLayer Football Market
+# Fair Draw Frontend
 
-Next.js frontend for GenLayer Football Market - AI-powered football match predictions on GenLayer blockchain.
+Next.js frontend for Fair Draw - a verifiable commit-then-reveal raffle on
+GenLayer, no LLM. Reads and writes the deployed `FairDraw` contract on
+**GenLayer Bradbury Testnet** (chain ID 4221).
 
 ## Setup
 
 1. Install dependencies:
 
-**Using bun:**
-```bash
-bun install
-```
-
-**Using npm:**
 ```bash
 npm install
 ```
 
 2. Create `.env` file:
+
 ```bash
 cp .env.example .env
 ```
 
-3. Configure environment variables:
-   - `NEXT_PUBLIC_CONTRACT_ADDRESS` - GenLayer Football Betting contract address
-   - `NEXT_PUBLIC_STUDIO_URL` - GenLayer Studio URL (default: https://studio.genlayer.com/api)
+3. Configure environment variables in `.env`:
+   - `NEXT_PUBLIC_CONTRACT_ADDRESS` - your deployed FairDraw contract address
+   - `NEXT_PUBLIC_GENLAYER_RPC_URL` - Bradbury RPC (default: `https://rpc-bradbury.genlayer.com`)
+   - `NEXT_PUBLIC_GENLAYER_CHAIN_ID` - must stay `4221` (Bradbury), consistent with the RPC URL above
 
 ## Development
 
-**Using bun:**
-```bash
-bun dev
-```
-
-**Using npm:**
 ```bash
 npm run dev
 ```
@@ -41,13 +33,6 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## Build
 
-**Using bun:**
-```bash
-bun run build
-bun start
-```
-
-**Using npm:**
 ```bash
 npm run build
 npm start
@@ -55,30 +40,30 @@ npm start
 
 ## Tech Stack
 
-- **Next.js 15** - React framework with App Router
+- **Next.js 16** - React framework with App Router
 - **TypeScript** - Type safety
-- **Tailwind CSS v4** - Styling with custom glass-morphism theme
+- **Tailwind CSS v4** - Styling
 - **genlayer-js** - GenLayer blockchain SDK
 - **TanStack Query (React Query)** - Data fetching and caching
 - **Radix UI** - Accessible component primitives
-- **shadcn/ui** - Pre-built UI components
 
-## Wallet Management
+## Wallet
 
-The app uses GenLayer's account system:
-- **Create Account**: Generate a new private key
-- **Import Account**: Import existing private key
-- **Export Account**: Export your private key (secured)
-- **Disconnect**: Clear stored account data
-
-Accounts are stored in browser's localStorage for development convenience.
+Connects via MetaMask (or any injected EIP-1193 provider) and prompts the
+user to add/switch to the GenLayer Bradbury Testnet if needed. No private
+keys are ever generated, imported, or stored by this app. The connect
+flow renders as a live instrument-log sequence (provider detected,
+network check, handshake, signal lock) rather than a modal dialog.
 
 ## Features
 
-- **Create Bets**: Create football match predictions with team names, game date, and predicted winner (Team 1, Team 2, or Draw)
-- **View Bets**: Real-time bet table with match details, predictions, status, and owners
-- **Resolve Bets**: Bet owners can resolve matches using GenLayer's AI to verify actual results
-- **Leaderboard**: Track top players by points earned from correct predictions
-- **Player Stats**: View your points and ranking in the community
-- **Glass-morphism UI**: Premium dark theme with OKLCH colors, backdrop blur effects, and smooth animations
-- **Real-time Updates**: Automatic data fetching with 3-second polling intervals via TanStack Query
+- **Open a round**: `open_round(round_id)` starts a fixed 5-minute entry
+  window
+- **Enter**: `enter(round_id)` - one entry per wallet while the window is
+  open
+- **Draw**: `draw(round_id)` - once the window closes, derives the winner
+  from a pre-committed public drand beacon round
+- **Entrant catalog**: every entrant for a round, read from
+  `get_entrants`, with the winner highlighted once drawn
+- **Verify independently**: the exact drand round, randomness, and winner
+  index are shown with a direct link to drand's public API

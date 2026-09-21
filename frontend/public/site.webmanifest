@@ -1,11 +1,11 @@
 {
-  "name": "GenLayer Football Market",
-  "short_name": "GenLayer Market",
-  "description": "AI-powered football match predictions on GenLayer blockchain",
+  "name": "Fair Draw",
+  "short_name": "Fair Draw",
+  "description": "A verifiable commit-then-reveal raffle on GenLayer - no LLM, validators reach consensus on a public drand randomness beacon.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#000000",
-  "theme_color": "#9B6AF6",
+  "background_color": "#060810",
+  "theme_color": "#060810",
   "icons": [
     {
       "src": "/favicon.svg",
