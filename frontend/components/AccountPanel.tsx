@@ -96,7 +96,7 @@ export function AccountPanel() {
       {isPanelOpen && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setIsPanelOpen(false)} />
-          <div className="absolute right-0 top-[calc(100%+10px)] z-50 w-[300px] border border-border bg-background p-4">
+          <div className="fixed left-4 right-4 sm:left-auto sm:right-5 top-[86px] z-50 sm:w-[300px] border border-border bg-background p-4">
             <span className="bracket tl" style={{ width: 10, height: 10 }} />
             <span className="bracket tr" style={{ width: 10, height: 10 }} />
             <span className="bracket bl" style={{ width: 10, height: 10 }} />

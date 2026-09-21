@@ -43,7 +43,7 @@ declare global {
 
 /**
  * Get the GenLayer RPC URL from environment variables. Defaults to
- * Bradbury's own RPC - Corroborate is only ever deployed there, so this
+ * Bradbury's own RPC - Fair Draw is only ever deployed there, so this
  * must stay consistent with getGenLayerChain()'s Bradbury fallback rather
  * than pointing at a different network's endpoint by default.
  */
