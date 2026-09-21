@@ -60,6 +60,15 @@ export default function HomePage() {
     return Math.floor((deadline - DRAND_GENESIS_TIME) / DRAND_PERIOD_SECONDS) + 1;
   }, [deadline]);
 
+  // The committed drand round's own scheduled publish time - up to
+  // DRAND_PERIOD_SECONDS after entry_deadline, since drand publishes on
+  // its own fixed 30s cadence, not synced to when this round happens to
+  // close. draw() can be called as soon as the window closes, but will
+  // revert cleanly ("not yet available") until this moment passes.
+  const targetPublishTime = targetRound ? DRAND_GENESIS_TIME + targetRound * DRAND_PERIOD_SECONDS : 0;
+  const pulseSecondsLeft = targetPublishTime - now;
+  const pulseReady = !targetPublishTime || pulseSecondsLeft <= 0;
+
   const entrantCount = entrants?.length ?? 0;
 
   const handleLoadRound = () => {
@@ -112,7 +121,17 @@ export default function HomePage() {
         <div className="mt-6 px-5">
           <div className="flex justify-between">
             <span className="label">Pulse Timing &mdash; Round {activeRoundId}</span>
-            <span className="label text-select">{exists ? (drawn ? "Drawn" : windowOpen ? "Entries Open" : "Awaiting Draw") : "Not Opened"}</span>
+            <span className="label text-select">
+              {exists
+                ? drawn
+                  ? "Drawn"
+                  : windowOpen
+                  ? "Entries Open"
+                  : !pulseReady
+                  ? "Pulse Pending"
+                  : "Ready To Draw"
+                : "Not Opened"}
+            </span>
           </div>
           <svg className="w-full h-auto mt-2.5 block" viewBox="0 0 620 120" xmlns="http://www.w3.org/2000/svg">
             <line x1="0" y1="96" x2="620" y2="96" stroke="var(--border)" strokeWidth="1" />
@@ -144,12 +163,23 @@ export default function HomePage() {
             {windowOpen && (
               <div className="font-head text-[1.4rem] text-select tabular">T&minus;{formatCountdown(secondsLeft)}</div>
             )}
+            {windowClosedUndrawn && !pulseReady && (
+              <div className="text-right">
+                <div className="font-head text-[1.4rem] text-select tabular">T&minus;{formatCountdown(pulseSecondsLeft)}</div>
+                <div className="label" style={{ letterSpacing: "0.06em" }}>until pulse {targetRound}</div>
+              </div>
+            )}
           </div>
 
           {exists && !drawn && (
             <div className="mt-3.5 p-2.5 px-3.5 border border-border" style={{ borderLeftWidth: 2, borderLeftColor: "var(--select)" }}>
               <p className="text-[0.72rem] text-muted-foreground leading-relaxed">
                 Draw round <b className="text-select tabular">{targetRound}</b> was fixed the instant this window opened &mdash; before its value existed. No entrant could have known it while deciding whether to enter.
+                {windowClosedUndrawn && (
+                  pulseReady
+                    ? " That pulse has been published - drawing now should succeed."
+                    : ` That pulse hasn't been published yet - drand ticks every 30s on its own schedule, not synced to this window's close.`
+                )}
               </p>
             </div>
           )}
@@ -184,11 +214,17 @@ export default function HomePage() {
               <button
                 type="button"
                 onClick={handleDraw}
-                disabled={!isConnected || isDrawing || entrantCount < 2}
+                disabled={!isConnected || isDrawing || entrantCount < 2 || !pulseReady}
                 className="link-ghost"
                 style={{ borderStyle: "solid", borderColor: "var(--select)", color: "var(--select)" }}
               >
-                {isDrawing ? "[ DRAWING… ]" : entrantCount < 2 ? "[ NEED 2+ ENTRANTS ]" : "[ DRAW WINNER ]"}
+                {isDrawing
+                  ? "[ DRAWING… ]"
+                  : entrantCount < 2
+                  ? "[ NEED 2+ ENTRANTS ]"
+                  : !pulseReady
+                  ? `[ PULSE PENDING (T−${formatCountdown(pulseSecondsLeft)}) ]`
+                  : "[ DRAW WINNER ]"}
               </button>
             )}
             {!isConnected && <span className="text-[0.7rem] text-muted-foreground">Connect a wallet above to act on this round.</span>}
